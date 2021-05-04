@@ -1,3 +1,9 @@
-from code import pkcs7
+from code import pkcs7_pad, pkcs7_unpad
 
-print(pkcs7(b'YELLOW SUBMARINE', 20))
+plaintext = b'YELLOW SUBMARINE'
+
+print(pkcs7_pad(plaintext, 20))
+
+assert pkcs7_unpad(pkcs7_pad(plaintext, 20)) == plaintext
+
+

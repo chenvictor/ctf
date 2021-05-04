@@ -1,11 +1,10 @@
-from Crypto.Cipher import AES
-import base64
+from base64 import b64decode
+from code import ecb_decrypt
 
 key = b'YELLOW SUBMARINE'
 
-with open('./7.txt') as f:
-    ciphertext = base64.b64decode(f.read())
-    obj = AES.new(key, AES.MODE_ECB)
-    plaintext = obj.decrypt(ciphertext)
+with open('./data/7.txt') as f:
+    ciphertext = b64decode(f.read())
+    plaintext = ecb_decrypt(ciphertext, key)
     print(plaintext)
 

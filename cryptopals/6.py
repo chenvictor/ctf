@@ -3,7 +3,7 @@ from code import hamming, guess_blocksize, split_ith, xor_decode, xor
 
 print(hamming(b'this is a test', b'wokka wokka!!!'))
 
-with open('./6.txt') as f:
+with open('./data/6.txt') as f:
     raw = b64decode(f.read())
 
     # first 5 sizes

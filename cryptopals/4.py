@@ -1,7 +1,7 @@
 from binascii import unhexlify
 from code import xor_decode
 
-with open('./4.txt') as f:
+with open('./data/4.txt') as f:
     best = (0, b'none', 0)
     num = 0
     i = 0

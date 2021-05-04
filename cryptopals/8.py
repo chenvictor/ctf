@@ -1,18 +1,15 @@
-ans = (999, '')
+from binascii import unhexlify
+from base64 import b64decode
+from code import is_ecb
 
-def chunkify(s, n):
-    return [s[i:i+n] for i in range(0, len(s), n)]
-
-with open('./8.txt') as f:
+with open('./data/8.txt') as f:
+    cnt = 0
     for line in f:
-        pats = {}
-        for chunk in chunkify(line,32):
-            if chunk in pats:
-                pats[chunk] += 1
-            else:
-                pats[chunk] = 1
-        ans = min(ans, (len(pats), line))
+        print(cnt)
+        cnt += 1
+        print(len(line))
+        raw = unhexlify(line)
+        if is_ecb(raw):
+            print(raw)
+            break
 
-print(ans)
-for chunk in chunkify(ans[1],32):
-    print(chunk)
