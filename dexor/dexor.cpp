@@ -59,11 +59,10 @@ void rmove(int dy, int dx) {
   }
 }
 
-void read_input(char* filename) {
+void read_input() {
   xlim = 0;
-  std::fstream fs(filename, std::fstream::in);
   std::string line;
-  while (getline(fs,line)) {
+  while (getline(std::cin,line)) {
     lines.emplace_back(base64::decode(line));
     xlim = std::max(xlim, (int)lines.back().size());
   }
@@ -139,11 +138,8 @@ void show_lines(int xonly) {
 }
 
 int main(int argc, char** argv) {
-  if (argc != 2) {
-    fprintf(stderr, "USAGE: %s file\n", argv[0]);
-    exit(1);
-  }
-  read_input(argv[1]);
+  read_input();
+
   my_init();
   atexit(my_exit);
 
