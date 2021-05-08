@@ -85,6 +85,8 @@ void my_init() {
   noecho();
   keypad(stdscr, TRUE);
   getmaxyx(stdscr, ymax, xmax);
+  // TODO use last line to show more info
+  ymax--;
 
   // move to initial (0,0) position
   ypos = xpos = 0;
@@ -95,7 +97,8 @@ void my_init() {
 void my_exit() {
   endwin();
   // output base64 encoded result
-  for (const std::string& line : lines) {
+  for (std::string& line : lines) {
+    std::transform(line.begin(), line.end(), key.begin(), line.begin(), std::bit_xor());
     std::cout << base64::encode(line) << '\n';
   }
   std::cout.flush();
