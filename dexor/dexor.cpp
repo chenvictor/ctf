@@ -5,10 +5,12 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <vector>
 
 #include "base64.hpp"
+#include "freq.hpp"
 
 using char8_t = unsigned char;
 
@@ -20,16 +22,25 @@ int ypos, xpos; // current cursor position
 int yscr, xscr; // current scroll position
 int ylim, xlim; // line count and maximum line size
 
+void show_status();
 void show_lines(int xonly=-1);
-chtype get_display_ch(const std::string& s, int pos);
+chtype get_display_ch(char c);
+void rmove(int dy, int dx);
 
-void update_key(char c) {
+void set_key(int pos, int k) {
+  key.at(pos) = k;
+  show_lines(pos-xscr);
+}
+
+void update_key(int pos, char c, bool advance_cursor=true) {
   const std::string& line = lines[ypos];
-  if (xpos >= (int)line.size()) {
+  if (pos >= (int)line.size()) {
     return;
   }
-  key.at(xpos) = c ^ line[xpos];
-  show_lines(xpos);
+  set_key(pos, c ^ line[pos]);
+  if (advance_cursor) {
+    rmove(0, +1);
+  }
 }
 
 bool update_scroll(int& dscr, int dpos, int dmax) {
@@ -52,6 +63,7 @@ void rmove(int dy, int dx) {
   xpos = xnew;
   wmove(stdscr, ypos-yscr, xpos-xscr);
   if (dy == 0 && dx == 0) return;
+  show_status();
   const bool yscrolled = update_scroll(yscr, ypos, ymax);
   const bool xscrolled = update_scroll(xscr, xpos, xmax);
   if (yscrolled || xscrolled) {
@@ -85,7 +97,6 @@ void my_init() {
   noecho();
   keypad(stdscr, TRUE);
   getmaxyx(stdscr, ymax, xmax);
-  // TODO use last line to show more info
   ymax--;
 
   // move to initial (0,0) position
@@ -108,13 +119,15 @@ bool is_printable(char c) {
   return 32 <= c && c < 127;
 }
 
-chtype get_display_ch(const std::string& s, int pos) {
+char get_ch(const std::string& s, int pos) {
   if (pos >= (int)s.size()) {
     return ' ';
   }
-  const char c = s[pos] ^ key[pos];
+  return s.at(pos) ^ key[pos];
+}
+
+chtype get_display_ch(char c) {
   if (is_printable(c)) {
-    // printable char
     return c;
   }
   // odd whitespace
@@ -128,16 +141,52 @@ chtype get_display_ch(const std::string& s, int pos) {
 }
 
 void show_lines(int xonly) {
-  // TODO only re-render xonly?
+  int xlow = 0, xhigh = std::min(xlim-xscr, xmax);
+  if (xonly != -1){
+    xlow = xonly;
+    xhigh = xlow + 1;
+  }
   for (int y = 0; y < std::min(ylim-yscr, ymax); ++y) {
-    wmove(stdscr, y, 0);
+    wmove(stdscr, y, xlow);
     const std::string& line = lines[y+yscr];
-    for (int x = 0; x < std::min(xlim-xscr, xmax); ++x) {
-      chtype dchar = get_display_ch(line, x+xscr);
+    for (int x = xlow; x < xhigh; ++x) {
+      const char c = get_ch(line, x+xscr);
+      chtype dchar = get_display_ch(c);
       assert(addch(dchar) != ERR);
     }
   }
   rmove(0, 0);
+}
+
+/**
+ * Status bar display
+ **/
+void show_status() {
+  const std::string& line = lines[ypos];
+  wmove(stdscr, ymax, 0);
+  clrtoeol();
+  if (xpos >= (int)line.size()) {
+    printw("no char");
+  } else {
+    const char c = get_ch(line, xpos);
+    printw("Hex: 0x%02x  Dec: %3d", 0xff & c, 0xff & c);
+  }
+  rmove(0, 0);
+}
+
+void solve() {
+  for (int x = 0; x < xlim; ++x) {
+    std::pair<long long,int> best(std::numeric_limits<long long>::min(), 0);
+    for (int k = 0; k < 256; ++k) {
+      long long score = 0;
+      for (const std::string& line : lines) {
+        if (x >= (int)line.size()) continue;
+        score += freq::score_letter(0xff & (line[x] ^ k));
+      }
+      best = max(best, std::make_pair(score, k));
+    }
+    set_key(x, best.second);
+  }
 }
 
 int main(int argc, char** argv) {
@@ -147,6 +196,7 @@ int main(int argc, char** argv) {
   atexit(my_exit);
 
   show_lines();
+  show_status();
 
   while(1) {
     const int ch = getch();
@@ -162,13 +212,16 @@ int main(int argc, char** argv) {
         break;
       case KEY_DOWN:
         rmove(+1, 0);
+        break;
+      case '\n':
+        solve();
+        break;
       default:
         if (is_printable(ch)) {
-          update_key(ch);
+          update_key(xpos, ch);
         }
     }
   }
-
   return 0;
 }
 
